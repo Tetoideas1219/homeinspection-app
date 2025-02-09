@@ -1,0 +1,76 @@
+import streamlit as st
+from fpdf import FPDF
+import tempfile
+import os
+
+# Set Streamlit page configuration
+st.set_page_config(page_title="Home Inspection Report", layout="wide")
+
+# Home Inspection Software
+st.title("Home Inspection Report")
+
+# Company Information
+company_name = st.text_input("Company Name")
+company_address = st.text_area("Company Address")
+
+# Inspection Location
+inspection_address = st.text_input("Inspection Location Address")
+
+# Inspection Checklist
+st.subheader("Inspection Checklist")
+checklist_items = [
+    "Roof Condition",
+    "Plumbing System",
+    "Electrical Wiring",
+    "HVAC System",
+    "Foundation",
+    "Windows and Doors",
+    "Exterior Walls",
+    "Interior Walls and Ceilings",
+    "Insulation and Ventilation",
+    "Basement/Attic"
+]
+
+inspection_results = {}
+photo_uploads = {}
+
+for item in checklist_items:
+    st.write(f"**{item}**")
+    result = st.radio(f"Condition of {item}", ["Good", "Fair", "Bad"], key=item)
+    inspection_results[item] = result
+    
+    if result == "Bad":
+        photo_uploads[item] = st.file_uploader(f"Upload photo for {item}", type=["jpg", "png", "jpeg"], key=f"photo_{item}")
+
+# Generate PDF Report
+if st.button("Generate Report"):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    pdf.cell(200, 10, company_name, ln=True, align='C')
+    pdf.cell(200, 10, company_address, ln=True, align='C')
+    pdf.ln(10)
+    
+    pdf.cell(200, 10, f"Inspection Location: {inspection_address}", ln=True)
+    pdf.ln(10)
+    
+    pdf.cell(200, 10, "Inspection Results:", ln=True)
+    pdf.ln(5)
+    
+    for item, result in inspection_results.items():
+        pdf.cell(200, 10, f"{item}: {result}", ln=True)
+        if result == "Bad" and photo_uploads[item]:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+                temp_file.write(photo_uploads[item].getbuffer())
+                temp_file_path = temp_file.name
+                pdf.image(temp_file_path, x=10, w=100)
+                os.remove(temp_file_path)
+        pdf.ln(5)
+    
+    pdf_output = "inspection_report.pdf"
+    pdf.output(pdf_output)
+    
+    with open(pdf_output, "rb") as file:
+        st.download_button(label="Download Report", data=file, file_name=pdf_output, mime="application/pdf")
